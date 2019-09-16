@@ -31,9 +31,8 @@ function filterCategories(rows) {
 
 function formatCsv(rows) {
   const delimiter = process.env.DELIMITER || '|'
-  const string = d3Dsv
-    .dsvFormat(delimiter)
-    .formatBody(rows, ['date', 'hours', 'subcategory', 'details'])
+  const columns = (process.env.OUTPUT_COLUMNS || 'date,hours').split(',')
+  const string = d3Dsv.dsvFormat(delimiter).formatBody(rows, columns)
   return string
 }
 
