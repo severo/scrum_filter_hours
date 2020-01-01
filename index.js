@@ -7,7 +7,11 @@ const fs = require('fs').promises
 function parseCsv(body) {
   const delimiter = process.env.DELIMITER || '|'
   const csv = ['date|hours|subcategory|details']
-    .concat(body.split('\n').filter(e => e.substr(0, 3) === '201' || e.substr(0, 3) === '202'))
+    .concat(
+      body
+        .split('\n')
+        .filter(e => e.substr(0, 3) === '201' || e.substr(0, 3) === '202')
+    )
     .reduce((csv, row) => csv.concat(row).concat('\n'), '')
   const rows = d3Dsv.dsvFormat(delimiter).parse(csv)
   return rows
@@ -48,12 +52,23 @@ async function saveCsv(string) {
 }
 
 dotenv.config()
-const scrumUrl = process.env.SCRUM_URL
-rp.get(scrumUrl)
-  .catch(err => {
-    console.log(`Couldn't download and process ${scrumUrl}`)
-    process.exit(1)
-  })
+const previousYearsUrl = process.env.PREVIOUS_YEARS_URL
+const currentYearUrl = process.env.CURRENT_YEAR_URL
+
+Promise.all(
+  [previousYearsUrl, currentYearUrl].map(url =>
+    rp.get(url).catch(err => {
+      console.log(`Couldn't download and process ${url}`)
+      process.exit(1)
+    })
+  )
+)
+  .then(texts =>
+    texts.reduce((acc, cur) => {
+      acc += cur
+      return acc
+    }, '')
+  )
   .then(parseCsv)
   .then(filterCategories)
   .then(formatCsv)
