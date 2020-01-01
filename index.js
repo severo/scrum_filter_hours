@@ -7,7 +7,7 @@ const fs = require('fs').promises
 function parseCsv(body) {
   const delimiter = process.env.DELIMITER || '|'
   const csv = ['date|hours|subcategory|details']
-    .concat(body.split('\n').filter(e => e.substr(0, 3) === '201'))
+    .concat(body.split('\n').filter(e => e.substr(0, 3) === '201' || e.substr(0, 3) === '202'))
     .reduce((csv, row) => csv.concat(row).concat('\n'), '')
   const rows = d3Dsv.dsvFormat(delimiter).parse(csv)
   return rows
