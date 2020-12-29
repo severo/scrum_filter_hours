@@ -18,9 +18,9 @@
   },
   "homepage": "https://github.com/severo/scrum_filter_hours#readme",
   "dependencies": {
-    "d3-dsv": "^1.1.1",
-    "dotenv": "^8.1.0",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.7"
+    "d3-dsv": "^2.0.0",
+    "dotenv": "^8.2.0",
+    "request": "^2.88.2",
+    "request-promise-native": "^1.0.9"
   }
 }
