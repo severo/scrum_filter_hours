@@ -1,76 +1,75 @@
-const request = require('request')
-const dotenv = require('dotenv')
-const d3Dsv = require('d3-dsv')
-const rp = require('request-promise-native')
-const fs = require('fs').promises
+const dotenv = require("dotenv");
+dotenv.config();
 
-function parseCsv(body) {
-  const delimiter = process.env.DELIMITER || '|'
-  const csv = ['date|hours|subcategory|details']
-    .concat(
-      body
-        .split('\n')
-        .filter(e => e.substr(0, 3) === '201' || e.substr(0, 3) === '202')
-    )
-    .reduce((csv, row) => csv.concat(row).concat('\n'), '')
-  const rows = d3Dsv.dsvFormat(delimiter).parse(csv)
-  return rows
-}
-
-function filterCategories(rows) {
-  const categories = process.env.CATEGORIES
-    ? process.env.CATEGORIES.split(',')
-    : []
-  const subcategories = process.env.SUBCATEGORIES
-    ? process.env.SUBCATEGORIES.split(',')
-    : []
-
-  return rows.filter(row => {
-    return (
-      subcategories.includes(row.subcategory) ||
-      categories.includes(row.subcategory.slice(0, 2))
-    )
-  })
-}
+const d3Dsv = require("d3-dsv");
+const fetch = require("node-fetch");
+const https = require("https");
+const { Octokit } = require("@octokit/rest");
+const octokit = new Octokit({
+  auth: process.env.GITHUB_TOKEN,
+});
 
 function formatCsv(rows) {
-  const delimiter = process.env.DELIMITER || '|'
-  const columns = (process.env.OUTPUT_COLUMNS || 'date,hours').split(',')
-  const string = d3Dsv.dsvFormat(delimiter).formatBody(rows, columns)
-  return string
+  const delimiter = process.env.OUTPUT_DELIMITER || "|";
+  const columns = (process.env.OUTPUT_COLUMNS || "date,hours").split(",");
+  const string = d3Dsv.dsvFormat(delimiter).format(rows, columns);
+  return string;
 }
 
-async function saveCsv(string) {
-  const outputFile = process.env.OUTPUT_FILE || '/tmp/output.csv'
-  try {
-    await fs.writeFile(outputFile, string)
-  } catch {
-    console.log(`Couldn't write file ${scrumUrl}`)
-    process.exit(1)
+// OBSOLETE
+// const fs = require('fs').promises
+// async function saveCsv(string) {
+//   const outputFile = process.env.OUTPUT_FILE || '/tmp/output.csv'
+//   try {
+//     await fs.writeFile(outputFile, string)
+//   } catch {
+//     console.log(`Couldn't write file ${outputFile}`)
+//     process.exit(1)
+//   }
+//   console.log(`Filtered rows saved to ${outputFile}`)
+// }
+
+async function updateGist({ gist, filename, content }) {
+  return octokit.gists.update({
+    gist_id: gist,
+    files: {
+      [filename]: { content },
+    },
+  });
+}
+
+const fetchOptions = {
+  headers: {
+    Authorization: `token ${process.env.GITHUB_TOKEN}`,
+  },
+};
+const authenticatedFetch = (d) => fetch(d, fetchOptions).then((d) => d.text());
+const parse = (d) => d3Dsv.dsvFormat("|").parse(d);
+
+const main = async () => {
+  const hours = parse(
+    await authenticatedFetch(process.env.PREVIOUS_YEARS_URL)
+  ).concat(parse(await authenticatedFetch(process.env.CURRENT_YEAR_URL)));
+
+  const activities = parse(
+    await authenticatedFetch(process.env.ACTIVITY_GISTS_URL)
+  );
+
+  for (const { activity, gist, filename } of activities) {
+    const filteredHours = hours.filter((d) => d.activity === activity);
+    const csv = formatCsv(filteredHours);
+    try {
+      const test = await updateGist({ gist, filename, content: csv });
+      if (test.status === 200) {
+        console.log(`success - gist ${gist} updated for activity ${activity}`);
+      } else {
+        console.error(`error updating gist ${gist} for activity ${activity}`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }
-  console.log(`Filtered rows saved to ${outputFile}`)
-}
+  //   .then(saveCsv)
+};
 
-dotenv.config()
-const previousYearsUrl = process.env.PREVIOUS_YEARS_URL
-const currentYearUrl = process.env.CURRENT_YEAR_URL
-
-Promise.all(
-  [previousYearsUrl, currentYearUrl].map(url =>
-    rp.get(url).catch(err => {
-      console.log(`Couldn't download and process ${url}`)
-      process.exit(1)
-    })
-  )
-)
-  .then(texts =>
-    texts.reduce((acc, cur) => {
-      acc += cur
-      return acc
-    }, '')
-  )
-  .then(parseCsv)
-  .then(filterCategories)
-  .then(formatCsv)
-  .then(saveCsv)
-  .then(() => process.exit(0))
+main();

@@ -15,6 +15,8 @@ cp .env.example .env
 vi .env
 ```
 
+`GITHUB_TOKEN` must be created in https://github.com/settings/tokens and have both `repo` and `gist` scopes. Note that all the gists must already exist.
+
 Run:
 
 ```

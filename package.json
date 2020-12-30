@@ -1,6 +1,6 @@
 {
   "name": "scrum_filter_hours",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -18,9 +18,9 @@
   },
   "homepage": "https://github.com/severo/scrum_filter_hours#readme",
   "dependencies": {
+    "@octokit/rest": "^18.0.12",
     "d3-dsv": "^2.0.0",
     "dotenv": "^8.2.0",
-    "request": "^2.88.2",
-    "request-promise-native": "^1.0.9"
+    "node-fetch": "^2.6.1"
   }
 }
