@@ -55,8 +55,7 @@ const main = async () => {
       )
     );
   } catch (e) {
-    console.error("Could not fetch hours for previous years");
-    return;
+    throw new Error("ERROR: Could not fetch hours for previous years");
   }
   try {
     hours.push(
@@ -68,8 +67,7 @@ const main = async () => {
       )
     );
   } catch (e) {
-    console.error("Could not fetch hours for current year");
-    return;
+    throw new Error("ERROR: Could not fetch hours for current year");
   }
   try {
     activities.push(
@@ -81,8 +79,7 @@ const main = async () => {
       )
     );
   } catch (e) {
-    console.error("Could not fetch activity gists");
-    return;
+    throw new Error("ERROR: Could not fetch activity gists");
   }
 
   for (const { activity, gist, filename } of activities) {
@@ -102,5 +99,6 @@ const main = async () => {
 };
 
 main().catch((e) => {
+  console.error(e.message);
   process.exitCode = 1;
 });
