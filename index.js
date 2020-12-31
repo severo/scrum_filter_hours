@@ -30,31 +30,60 @@ const fetchOptions = {
     Authorization: `token ${process.env.GITHUB_TOKEN}`,
   },
 };
-const authenticatedFetch = (d) => fetch(d, fetchOptions).then((d) => d.text());
+const authenticatedFetch = (d) =>
+  fetch(d, fetchOptions).then((res) => {
+    if (res.ok) {
+      // res.status >= 200 && res.status < 300
+      return res.text();
+    } else {
+      throw new Error(res.statusText);
+    }
+  });
 const parse = (d) =>
   d3Dsv.dsvFormat(process.env.INPUT_DELIMITER || "|").parse(d);
 
 const main = async () => {
-  const hours = parse(
-    await authenticatedFetch(
-      process.env.PREVIOUS_YEARS_URL ||
-        "https://raw.githubusercontent.com/severo/personal-database/master/hours/hours_previous_years.csv"
-    )
-  ).concat(
-    parse(
-      await authenticatedFetch(
-        process.env.CURRENT_YEAR_URL ||
-          "https://raw.githubusercontent.com/severo/personal-database/master/hours/hours_current_year.csv"
+  const hours = [];
+  const activities = [];
+  try {
+    hours.push(
+      ...parse(
+        await authenticatedFetch(
+          process.env.PREVIOUS_YEARS_URL ||
+            "https://raw.githubusercontent.com/severo/personal-database/master/hours/hours_previous_years.csv"
+        )
       )
-    )
-  );
-
-  const activities = parse(
-    await authenticatedFetch(
-      process.env.ACTIVITY_GISTS_URL ||
-        "https://raw.githubusercontent.com/severo/personal-database/master/hours/activity_gists.csv"
-    )
-  );
+    );
+  } catch (e) {
+    console.error("Could not fetch hours for previous years");
+    return;
+  }
+  try {
+    hours.push(
+      ...parse(
+        await authenticatedFetch(
+          process.env.CURRENT_YEAR_URL ||
+            "https://raw.githubusercontent.com/severo/personal-database/master/hours/hours_current_year.csv"
+        )
+      )
+    );
+  } catch (e) {
+    console.error("Could not fetch hours for current year");
+    return;
+  }
+  try {
+    activities.push(
+      ...parse(
+        await authenticatedFetch(
+          process.env.ACTIVITY_GISTS_URL ||
+            "https://raw.githubusercontent.com/severo/personal-database/master/hours/activity_gists.csv"
+        )
+      )
+    );
+  } catch (e) {
+    console.error("Could not fetch activity gists");
+    return;
+  }
 
   for (const { activity, gist, filename } of activities) {
     const filteredHours = hours.filter((d) => d.activity === activity);
@@ -64,12 +93,14 @@ const main = async () => {
       if (test.status === 200) {
         console.log(`success - gist ${gist} updated for activity ${activity}`);
       } else {
-        console.error(`error updating gist ${gist} for activity ${activity}`);
+        console.warn(`error updating gist ${gist} for activity ${activity}`);
       }
     } catch (e) {
-      console.error(e);
+      console.warn(e);
     }
   }
 };
 
-main();
+main().catch((e) => {
+  process.exitCode = 1;
+});
