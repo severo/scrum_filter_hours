@@ -16,19 +16,6 @@ function formatCsv(rows) {
   return string;
 }
 
-// OBSOLETE
-// const fs = require('fs').promises
-// async function saveCsv(string) {
-//   const outputFile = process.env.OUTPUT_FILE || '/tmp/output.csv'
-//   try {
-//     await fs.writeFile(outputFile, string)
-//   } catch {
-//     console.log(`Couldn't write file ${outputFile}`)
-//     process.exit(1)
-//   }
-//   console.log(`Filtered rows saved to ${outputFile}`)
-// }
-
 async function updateGist({ gist, filename, content }) {
   return octokit.gists.update({
     gist_id: gist,
@@ -44,15 +31,29 @@ const fetchOptions = {
   },
 };
 const authenticatedFetch = (d) => fetch(d, fetchOptions).then((d) => d.text());
-const parse = (d) => d3Dsv.dsvFormat("|").parse(d);
+const parse = (d) =>
+  d3Dsv.dsvFormat(process.env.INPUT_DELIMITER || "|").parse(d);
 
 const main = async () => {
   const hours = parse(
-    await authenticatedFetch(process.env.PREVIOUS_YEARS_URL)
-  ).concat(parse(await authenticatedFetch(process.env.CURRENT_YEAR_URL)));
+    await authenticatedFetch(
+      process.env.PREVIOUS_YEARS_URL ||
+        "https://raw.githubusercontent.com/severo/personal-database/master/hours/hours_previous_years.csv"
+    )
+  ).concat(
+    parse(
+      await authenticatedFetch(
+        process.env.CURRENT_YEAR_URL ||
+          "https://raw.githubusercontent.com/severo/personal-database/master/hours/hours_current_year.csv"
+      )
+    )
+  );
 
   const activities = parse(
-    await authenticatedFetch(process.env.ACTIVITY_GISTS_URL)
+    await authenticatedFetch(
+      process.env.ACTIVITY_GISTS_URL ||
+        "https://raw.githubusercontent.com/severo/personal-database/master/hours/activity_gists.csv"
+    )
   );
 
   for (const { activity, gist, filename } of activities) {
@@ -69,7 +70,6 @@ const main = async () => {
       console.error(e);
     }
   }
-  //   .then(saveCsv)
 };
 
 main();
